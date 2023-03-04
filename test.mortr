@@ -1,0 +1,6 @@
+
+#load "another.mort";
+
+main :: () {
+    x := 5;
+}
