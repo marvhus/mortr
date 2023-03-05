@@ -1,13 +1,10 @@
 
-use std::{
-	fs,
-	vec::Vec
-};
+use std::vec::Vec;
 
 pub mod lexer;
 
 fn read_file(path: &str) -> String {
-	fs::read_to_string(path).expect("Failed to read file")
+	std::fs::read_to_string(path).expect("Failed to read file")
 }
 
 fn lex_file(path: &str) -> Vec<lexer::Token> {
@@ -64,7 +61,14 @@ fn lex_string(mut text: String) -> Vec<lexer::Token> {
 }
 
 fn main() {
-	let tokens = lex_file("test.mortr");
+	let args: Vec<String> = std::env::args().collect();
+	if args.len() < 2 {
+		eprintln!("Not enough arguments. it should be 'mortr [file]'");
+		std::process::exit(1);
+	}
+	let path: &String = &args[1];
+	
+	let tokens = lex_file(path);
 
 	for token in tokens {
 		println!("{:?}", token);
