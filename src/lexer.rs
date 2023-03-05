@@ -1,6 +1,4 @@
-use std::vec::Vec;
-
-#[derive(Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Token {
 	Symbol(String),
 	Number(String),
@@ -9,152 +7,99 @@ pub enum Token {
 	Colon,
 	SemiColon,
 	Equals,
-	OpenCurlyBracket,
-	CloseCurlyBracket,
-	OpenCurvyBracket,
-	CloseCurvyBracket,
-}
-
-#[derive(PartialEq)]
-pub enum ReadingType {
-	Alphanumeric,
-	Numeric,
-	Macro,
-	String,
-	#[allow(dead_code)]
-	Symbol,
+	OpenBraces,
+	CloseBraces,
+	OpenParentheses,
+	CloseParentheses,
+	EOF,
 	None,
 }
 
-fn lex_symbol(text: String) -> Token {
-	match text.as_str() {
-		":" => Token::Colon,
-		";" => Token::SemiColon,
-		"=" => Token::Equals,
-		"{" => Token::OpenCurlyBracket,
-		"}" => Token::CloseCurlyBracket,
-		"(" => Token::OpenCurvyBracket,
-		")" => Token::CloseCurvyBracket,
-		_ => panic!("during: Unknown symbol '{}'", text)
-	}
-}
-
-fn is_symbol(c: char) -> bool {
-	match c {
-		':'|';'|'='|'{'|'}'|'('|')' => true,
-		_ => false,
-	}
-}
-
-pub fn lex_file(text: String) -> Vec<Token> {
-	let mut tokens: Vec<Token> = Vec::new();
-	let mut current_type: ReadingType = ReadingType::None;
-
-	let mut end: bool = false;
-	let mut inserted_symbol: bool = false;
-	let mut curr: String = "".into();
-	for c in text.chars() {
-		match current_type {
-			ReadingType::Alphanumeric => {
-				end = match c {
-					'a'..='z'|'A'..='Z'|'_'|'0'..='9' => false,
-					_ => true,
-				};
-				if !end {
-					curr.push(c);
-				} else if is_symbol(c) {
-					tokens.push(lex_symbol(String::from(c)));
-					inserted_symbol = true;
-				} 
-			},
-			ReadingType::Numeric => {
-				end = match c {
-					'0'..='9' => false,
-					_ => true,
-				};
-				if !end {
-					curr.push(c);
-				} else if is_symbol(c) {
-					tokens.push(lex_symbol(String::from(c)));
-					inserted_symbol = true;
-				} 
-			},
-			ReadingType::String => {
-				end = match c {
-					'"' => true,
-					_ => false,
-				};
-				if !end {
-					curr.push(c);
-				} 
-			},
-			ReadingType::Macro => {
-				end = match c {
-					'a'..='z' => false,
-					_ => true,
-				};
-				if !end {
-					curr.push(c);
-				} else if is_symbol(c) {
-					tokens.push(lex_symbol(String::from(c)));
-					inserted_symbol = true;
-				} 
-			}
-			ReadingType::Symbol => {},
-			ReadingType::None => {
-				current_type = match c {
-					'a'..='z'|'A'..='Z'|'_' => ReadingType::Alphanumeric,
-					'0'..='9' => ReadingType::Numeric,
-					':'|';'|'='|'{'|'}'|'('|')' => {
-						tokens.push(lex_symbol(String::from(c)));
-						ReadingType::None
-					},
-					' ' => ReadingType::None,
-					'"' => {
-						end = false;
-						ReadingType::String
-					},
-					'#' => ReadingType::Macro,
-					_ => panic!("Invalid! {}", c)
-				};
-				if current_type != ReadingType::None
-				&& current_type != ReadingType::String {
-					curr.push(c);
-					end = false;
-				}
-			},
-		};
-		if end {
-			let mut symbol: Option<Token> = None;
-			if inserted_symbol {
-				symbol = tokens.pop(); // pop returns Option<>
-				inserted_symbol = false;
-			}
-			match current_type {
-				ReadingType::String =>       tokens.push(Token::String(curr)),
-				ReadingType::Alphanumeric => tokens.push(Token::Symbol(curr)),
-				ReadingType::Numeric =>      tokens.push(Token::Number(curr)),
-				ReadingType::Macro =>        tokens.push(Token::Macro(curr)),
-				ReadingType::Symbol => {},
-				ReadingType::None => {},
-			};
-			if let Some(symbol) = symbol {
-				tokens.push(symbol);
-			}
-			curr = "".into();
-			current_type = ReadingType::None;
-		}
-	}
-	if curr != "" {
-		match current_type {
-			ReadingType::String =>       tokens.push(Token::String(curr)),
-			ReadingType::Alphanumeric => tokens.push(Token::Symbol(curr)),
-			ReadingType::Numeric =>      tokens.push(Token::Number(curr)),
-			ReadingType::Macro =>        tokens.push(Token::Macro(curr)),
-			ReadingType::Symbol =>       tokens.push(lex_symbol(curr)),
-			ReadingType::None => {},
-		};
+pub fn lex(mut text: String) -> (String, Token) {
+	fn get_next(s: &mut String) -> char {
+		s.pop().expect("End of string")
 	}
 	
-	tokens
+	let mut gathred: String = String::new();
+	
+	while text.len() > 0 {
+		let mut c = get_next(&mut text);
+		match c {
+			' '|'\n' => continue,
+			':' => return (text, Token::Colon),
+			';' => return (text, Token::SemiColon),
+			'=' => return (text, Token::Equals),
+			'{' => return (text, Token::OpenBraces),
+			'}' => return (text, Token::CloseBraces),
+			'(' => return (text, Token::OpenParentheses),
+			')' => return (text, Token::CloseParentheses),
+			_ => {
+				gathred.push(c);
+
+				// Symbol a..zA..Z_
+				if c.is_alphabetic() {
+					while !c.is_whitespace() {
+						if text.len() <= 0 {
+							return (text, Token::String(gathred));
+						}
+						c = get_next(&mut text);
+						if !c.is_alphanumeric() && c != '_' {
+							text.push(c);
+							return (text, Token::Symbol(gathred));
+						}
+						gathred.push(c);
+					}
+					return (text, Token::Symbol(gathred));
+				}
+				// Number 0..9
+				if c.is_numeric() {
+					while !c.is_whitespace() {
+						if text.len() <= 0 {
+							return (text, Token::String(gathred));
+						}
+						c = get_next(&mut text);
+						if !c.is_numeric() {
+							text.push(c);
+							return (text, Token::Symbol(gathred));
+						}
+						gathred.push(c);
+					}
+					return (text, Token::Symbol(gathred));
+				}
+
+				// Macro #
+				if c == '#' {
+					gathred = "".into(); // do not include the #
+					while !c.is_whitespace() {
+						if text.len() <= 0 {
+							return (text, Token::String(gathred));
+						}
+						c = get_next(&mut text);
+						if !c.is_alphanumeric() && c != '_' {
+							text.push(c);
+							return (text, Token::Macro(gathred));
+						}
+						gathred.push(c);
+					}
+					return (text, Token::Symbol(gathred));
+				}
+
+				// String "..."
+				if c == '"' { 
+					gathred = "".into(); // do not include the "
+					while text.len() > 0 {
+						c = get_next(&mut text);
+						if c == '"' {
+							return (text, Token::String(gathred));
+						}
+						gathred.push(c);
+					}
+					panic!("String ended with EOF, '{}'", gathred);
+				}
+
+				panic!("Unexpected char '{}'", c);
+			}
+		}
+	}
+	(text, Token::EOF)
 }
