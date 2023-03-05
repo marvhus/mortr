@@ -4,6 +4,11 @@ pub enum Token {
 	Number(String),
 	String(String),
 	Macro(String),
+	Comma,
+	Hyphen,
+	Plus,
+	GreaterThan,
+	LessThan,
 	Colon,
 	SemiColon,
 	Equals,
@@ -26,6 +31,11 @@ pub fn lex(mut text: String) -> (String, Token) {
 		let mut c = get_next(&mut text);
 		match c {
 			' '|'\n' => continue,
+			',' => return (text, Token::Comma),
+			'-' => return (text, Token::Hyphen),
+			'+' => return (text, Token::Plus),
+			'>' => return (text, Token::GreaterThan),
+			'<' => return (text, Token::LessThan),
 			':' => return (text, Token::Colon),
 			';' => return (text, Token::SemiColon),
 			'=' => return (text, Token::Equals),
