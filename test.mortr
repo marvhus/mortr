@@ -1,4 +1,6 @@
 
+#code "a :: () -> {}" "b :: () -> {}";
+
 #load "another.mort";
 
 main :: () -> {

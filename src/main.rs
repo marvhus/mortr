@@ -11,8 +11,10 @@ fn read_file(path: &str) -> String {
 }
 
 fn lex_file(path: &str) -> Vec<lexer::Token> {
-	let mut text: String = read_file(path).chars().rev().collect();
-	
+	lex_string(read_file(path).chars().rev().collect())
+}
+
+fn lex_string(mut text: String) -> Vec<lexer::Token> {
 	let mut tokens: Vec<lexer::Token> = Vec::new();
 
 	let mut token: lexer::Token = lexer::Token::None;
@@ -22,7 +24,7 @@ fn lex_file(path: &str) -> Vec<lexer::Token> {
 			match name.as_str() {
 				"load" => {
 					'macro_loop:
-					while token != lexer::Token::EOF && token != lexer::Token::SemiColon {
+					while token != lexer::Token::EOF {
 						(text, token) = lexer::lex(text);
 						match &token {
 							lexer::Token::String(name) => {
@@ -31,11 +33,27 @@ fn lex_file(path: &str) -> Vec<lexer::Token> {
 								tokens.append(loaded_tokens);
 							},
 							lexer::Token::SemiColon => break 'macro_loop,
-							_ => panic!("The '{:?}' Token is not supported with the 'load' macro", token),
+							_ => panic!("You can't use the '{:?}' token with the 'load' macro", token.clone()),
 						} 
 					} 
+				},
+				"code" => {
+					'macro_loop:
+					while token != lexer::Token::EOF {
+						(text, token) = lexer::lex(text);
+						match &token {
+							lexer::Token::String(code) => {
+								let mut loaded_tokens = lex_string(code.chars().rev().collect());
+								loaded_tokens.pop(); // Removed EOF
+								tokens.append(&mut loaded_tokens);
+							},
+							lexer::Token::SemiColon => break 'macro_loop,
+							_ => panic!("You can't use the '{:?}' token with the 'load' macro", token.clone()),
+						}
+					}
 				}
-				_ => unimplemented!("The '{}' does not exist", name)
+				// Macros that can't be figured out at this stage
+				_ => tokens.push(token.clone())
 			}
 		} else {
 			tokens.push(token.clone())
